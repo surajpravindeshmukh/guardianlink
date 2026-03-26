@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <title>GuardianLink | Emergency Contacts Manager</title>
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Tailwind CSS v3 + Font Awesome Icons + Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+</head>
+<body class="antialiased">
+
+  <!-- Main container -->
+  <div class="main-container max-w-3xl mx-auto px-5 md:px-6">
+    <!-- Header Section -->
+    <div class="mb-6 animate-slide-in-left">
+      <!-- Top row: Title + Admin chips -->
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <i class="fas fa-shield-alt text-indigo-600 text-xl md:text-2xl animate-float"></i> 
+            Guardian<span class="text-indigo-600">Link</span>
+          </h1>
+          <p class="text-gray-500 text-xs md:text-sm mt-0.5 animate-fade-in hidden sm:block">Emergency & essential services</p>
+        </div>
+        
+        <!-- Admin chips -->
+        <div class="flex items-center gap-2">
+          <button id="adminModeToggleBtn" class="ripple relative group rounded-full px-3 md:px-4 py-1.5 md:py-2 shadow-sm flex items-center gap-1.5 md:gap-2 border transition-all duration-200 hover:scale-105 text-xs md:text-sm" style="background: white; border-color: #e5e7eb;">
+            <i id="adminIcon" class="fas fa-user-cog text-gray-500 text-xs md:text-sm"></i>
+            <span id="adminModeText" class="font-medium text-gray-700">Admin</span>
+          </button>
+          
+          <div id="adminStatusBadge" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 flex items-center gap-1 animate-fade-in">
+            <i id="statusIcon" class="fas fa-eye text-gray-500 text-xs"></i>
+            <span id="statusText" class="text-gray-600">Viewer</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Mobile description -->
+      <p class="text-gray-500 text-xs mb-3 animate-fade-in sm:hidden">Emergency & essential services</p>
+      
+      <!-- Category Dropdown -->
+      <div class="relative w-full" style="z-index: 1000;">
+        <button id="categoryDropdownBtn" class="w-full bg-white hover:bg-gray-50 rounded-xl px-4 py-2.5 shadow-sm flex items-center justify-between gap-2 border border-gray-200 transition-all duration-200 text-sm">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-tags text-indigo-500 text-sm"></i>
+            <span id="selectedCategoryText">All Categories</span>
+          </div>
+          <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-200"></i>
+        </button>
+        
+        <div id="categoryDropdown" class="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-[1000] hidden category-dropdown">
+          <div class="max-h-80 overflow-y-auto custom-scrollbar">
+            <div class="py-1" id="categoryList">
+              <!-- Categories will be dynamically loaded here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search + Add Button Row -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-6 animate-slide-in-right" style="position: relative; z-index: 10;">
+      <div class="relative flex-1">
+        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="text" id="searchInput" placeholder="Search by name, phone..." 
+               class="w-full pl-10 pr-4 py-2.5 md:py-3 rounded-xl border border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none transition-all duration-300 focus:scale-[1.01] text-sm">
+      </div>
+      <button id="openAddModalBtn" class="ripple bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 md:px-5 py-2.5 md:py-3 rounded-xl shadow-md transition-all duration-300 flex items-center justify-center gap-2 hover:scale-105 hover:shadow-xl active:scale-95 text-sm">
+        <i class="fas fa-plus-circle"></i> Add
+      </button>
+    </div>
+
+    <!-- Contacts List Container -->
+    <div id="contactsContainer" class="space-y-3" style="position: relative; z-index: 1;">
+      <div class="text-center py-12 text-gray-400 shimmer-loading rounded-xl">
+        <i class="fas fa-spinner fa-spin mr-2"></i> Loading...
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals Container -->
+  <div id="modalsContainer"></div>
+
+  <!-- Toast notifications -->
+  <div id="actionToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-2.5 rounded-full shadow-xl text-sm z-[2000] hidden transition-all duration-300">
+    <i class="fas fa-info-circle mr-2"></i> <span id="toastMsg"></span>
+  </div>
+
+  <!-- External JavaScript -->
+  <script src="js/app.js"></script>
+</body>
+</html>
