@@ -1,94 +1,154 @@
 // App State
 let isAdminMode = false;
 let contacts = [];
+let categories = [];
 let activeCategory = "all";
 let searchQuery = "";
 
-// Configuration
-const ADMIN_PASSWORD_HASH = btoa("admin123");
+// Initialize app
+async function initApp() {
+  await loadCategories();
+  await loadContacts();
+  setupEventListeners();
+  updateUIBasedOnMode();
+}
 
-// Categories data
-const categories = [
-  { value: "all", label: "📋 All Categories", icon: "fas fa-list-ul", iconColor: "text-gray-400" },
-  { value: "Hospital", label: "🏥 Hospital", icon: "fas fa-hospital", iconColor: "text-red-500" },
-  { value: "Electrician", label: "⚡ Electrician", icon: "fas fa-bolt", iconColor: "text-yellow-500" },
-  { value: "Plumber", label: "🔧 Plumber", icon: "fas fa-wrench", iconColor: "text-blue-500" },
-  { value: "Painter", label: "🎨 Painter", icon: "fas fa-paint-brush", iconColor: "text-purple-500" },
-  { value: "Carpenter", label: "🪚 Carpenter", icon: "fas fa-hammer", iconColor: "text-amber-500" },
-  { value: "Gas Booking", label: "⛽ Gas Booking", icon: "fas fa-gas-pump", iconColor: "text-emerald-500" },
-  { value: "Mechanic", label: "🔧 Mechanic", icon: "fas fa-car", iconColor: "text-orange-500" },
-  { value: "Teacher", label: "📚 Teacher", icon: "fas fa-chalkboard-user", iconColor: "text-blue-600" },
-  { value: "Gas Service", label: "⛽ Gas Service", icon: "fas fa-fire", iconColor: "text-orange-600" },
-  { value: "AC Repair", label: "❄️ AC Repair", icon: "fas fa-snowflake", iconColor: "text-cyan-500" },
-  { value: "Security", label: "🛡️ Security", icon: "fas fa-shield-hooded", iconColor: "text-gray-600" },
-  { value: "Cleaner", label: "🧹 Cleaner", icon: "fas fa-hand-sparkles", iconColor: "text-teal-500" },
-  { value: "Gardener", label: "🌿 Gardener", icon: "fas fa-leaf", iconColor: "text-green-500" }
-];
-
-// Default contacts
-const defaultContacts = [
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-1', name: "City Central Hospital", category: "Hospital", phone: "+91 22 4567 8901", address: "MG Road, Dombivli East", notes: "24/7 emergency" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-2', name: "Sharma Electricians", category: "Electrician", phone: "+91 98765 43210", address: "Near Railway Station", notes: "24hr service" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-3', name: "Precision Plumbers", category: "Plumber", phone: "+91 99887 66554", address: "Nehru Nagar", notes: "Pipeline expert" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-4', name: "Creative Painters", category: "Painter", phone: "+91 88990 11223", address: "Ganpati Chowk", notes: "Free estimate" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-5', name: "Woodcraft Carpentry", category: "Carpenter", phone: "+91 77788 99000", address: "Tilak Nagar", notes: "Custom furniture" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-6', name: "Indane Gas Agency", category: "Gas Booking", phone: "+91 1800 233 4455", address: "Sector 12", notes: "Book online" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-7', name: "Quick Mechanic Services", category: "Mechanic", phone: "+91 98765 12345", address: "Industrial Area", notes: "Car & bike repair" },
-  { id: crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-8', name: "Elite Tutors", category: "Teacher", phone: "+91 99887 11223", address: "Education Hub", notes: "All subjects" }
-];
-
-// Storage functions
-function loadContactsFromStorage() {
-  const stored = localStorage.getItem("guardian_contacts");
-  if (stored) {
-    contacts = JSON.parse(stored);
-  } else {
-    contacts = defaultContacts;
-    saveToLocalStorage();
+// Load categories from Supabase
+async function loadCategories() {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+    
+    if (error) throw error;
+    
+    categories = data;
+    return categories;
+  } catch (error) {
+    console.error('Error loading categories:', error);
+    showToast('Failed to load categories', 'error');
+    return [];
   }
 }
 
-function saveToLocalStorage() {
-  localStorage.setItem("guardian_contacts", JSON.stringify(contacts));
-}
-
-function generateId() {
-  return crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36);
-}
-
-// CRUD operations
-function addContact(contactData) {
-  const newContact = { ...contactData, id: generateId() };
-  contacts.push(newContact);
-  saveToLocalStorage();
-  return newContact;
-}
-
-function updateContact(id, updatedData) {
-  const index = contacts.findIndex(c => c.id === id);
-  if (index !== -1) {
-    contacts[index] = { ...contacts[index], ...updatedData };
-    saveToLocalStorage();
-    return true;
+// Load contacts from Supabase
+async function loadContacts() {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select(`
+        *,
+        categories (
+          name,
+          icon,
+          icon_color
+        )
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    contacts = data;
+    renderContacts();
+    return contacts;
+  } catch (error) {
+    console.error('Error loading contacts:', error);
+    showToast('Failed to load contacts', 'error');
+    return [];
   }
-  return false;
 }
 
-function deleteContact(id) {
-  const filtered = contacts.filter(c => c.id !== id);
-  if (filtered.length !== contacts.length) {
-    contacts = filtered;
-    saveToLocalStorage();
-    return true;
+// Add contact to Supabase
+async function addContact(contactData) {
+  try {
+    // Find category ID
+    const category = categories.find(c => c.name === contactData.category);
+    if (!category) throw new Error('Category not found');
+    
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert([{
+        name: contactData.name,
+        category_id: category.id,
+        phone: contactData.phone,
+        address: contactData.address,
+        notes: contactData.notes
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    contacts.unshift(data);
+    renderContacts();
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error adding contact:', error);
+    showToast('Failed to add contact', 'error');
+    return { success: false, error: error.message };
   }
-  return false;
+}
+
+// Update contact in Supabase
+async function updateContact(id, updatedData) {
+  try {
+    // Find category ID
+    const category = categories.find(c => c.name === updatedData.category);
+    if (!category) throw new Error('Category not found');
+    
+    const { data, error } = await supabase
+      .from('contacts')
+      .update({
+        name: updatedData.name,
+        category_id: category.id,
+        phone: updatedData.phone,
+        address: updatedData.address,
+        notes: updatedData.notes
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    const index = contacts.findIndex(c => c.id === id);
+    if (index !== -1) contacts[index] = data;
+    renderContacts();
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating contact:', error);
+    showToast('Failed to update contact', 'error');
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete contact from Supabase
+async function deleteContact(id) {
+  try {
+    const { error } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    contacts = contacts.filter(c => c.id !== id);
+    renderContacts();
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting contact:', error);
+    showToast('Failed to delete contact', 'error');
+    return { success: false, error: error.message };
+  }
 }
 
 // Filter contacts
 function filterContacts() {
   let filtered = [...contacts];
   if (activeCategory !== "all") {
-    filtered = filtered.filter(c => c.category === activeCategory);
+    filtered = filtered.filter(c => c.categories?.name === activeCategory);
   }
   if (searchQuery.trim() !== "") {
     const q = searchQuery.trim().toLowerCase();
@@ -112,7 +172,7 @@ function escapeHtml(str) {
 }
 
 // Render contacts
-function renderContacts() {
+async function renderContacts() {
   const container = document.getElementById("contactsContainer");
   const filtered = filterContacts();
   
@@ -133,20 +193,11 @@ function renderContacts() {
   
   let html = '';
   filtered.forEach(contact => {
+    const category = contact.categories;
     let catColor = "bg-gray-100 text-gray-700";
-    if (contact.category === "Hospital") catColor = "bg-red-100 text-red-700";
-    else if (contact.category === "Electrician") catColor = "bg-yellow-100 text-yellow-800";
-    else if (contact.category === "Plumber") catColor = "bg-blue-100 text-blue-700";
-    else if (contact.category === "Painter") catColor = "bg-purple-100 text-purple-700";
-    else if (contact.category === "Carpenter") catColor = "bg-amber-100 text-amber-700";
-    else if (contact.category === "Gas Booking") catColor = "bg-emerald-100 text-emerald-700";
-    else if (contact.category === "Mechanic") catColor = "bg-orange-100 text-orange-700";
-    else if (contact.category === "Teacher") catColor = "bg-blue-100 text-blue-700";
-    else if (contact.category === "Gas Service") catColor = "bg-emerald-100 text-emerald-700";
-    else if (contact.category === "AC Repair") catColor = "bg-cyan-100 text-cyan-700";
-    else if (contact.category === "Security") catColor = "bg-gray-100 text-gray-700";
-    else if (contact.category === "Cleaner") catColor = "bg-teal-100 text-teal-700";
-    else if (contact.category === "Gardener") catColor = "bg-green-100 text-green-700";
+    if (category) {
+      catColor = category.icon_color?.replace('text-', 'bg-')?.replace('500', '100') + ' ' + category.icon_color || "bg-gray-100 text-gray-700";
+    }
     
     const actionButtons = isAdminMode ? `
       <div class="flex gap-1 ml-2">
@@ -161,7 +212,7 @@ function renderContacts() {
           <div class="flex-1">
             <div class="flex flex-wrap items-center gap-1.5 mb-1">
               <h3 class="font-bold text-base md:text-lg text-gray-800">${escapeHtml(contact.name)}</h3>
-              <span class="text-xs ${catColor} px-2 py-0.5 rounded-full font-medium">${escapeHtml(contact.category === "Gas Booking" ? "Gas" : contact.category)}</span>
+              <span class="text-xs ${catColor} px-2 py-0.5 rounded-full font-medium">${escapeHtml(category?.name || 'Unknown')}</span>
             </div>
             <div class="flex items-center gap-2 text-gray-600 text-xs md:text-sm mt-1.5">
               <i class="fas fa-phone-alt text-indigo-500 text-xs"></i>
@@ -229,12 +280,12 @@ function updateUIBasedOnMode() {
   }
 }
 
-function enableAdminMode() {
+async function enableAdminMode() {
   isAdminMode = true;
   updateCompactStatusBadge();
   showToast("✅ Admin mode active", "success");
   updateUIBasedOnMode();
-  renderContacts();
+  await loadContacts();
 }
 
 function disableAdminMode() {
@@ -243,10 +294,6 @@ function disableAdminMode() {
   showToast("👁️ Viewer mode", "info");
   updateUIBasedOnMode();
   renderContacts();
-}
-
-function verifyPassword(inputPassword) {
-  return btoa(inputPassword) === ADMIN_PASSWORD_HASH;
 }
 
 // Toast notification
@@ -263,28 +310,22 @@ function showToast(msg, type) {
 }
 
 // Event Listeners
-document.getElementById('adminModeToggleBtn')?.addEventListener('click', () => {
-  if (isAdminMode) { 
-    disableAdminMode(); 
-  } else { 
-    showPasswordModal(); 
-  }
-});
+function setupEventListeners() {
+  document.getElementById('adminModeToggleBtn')?.addEventListener('click', () => {
+    if (isAdminMode) { 
+      disableAdminMode(); 
+    } else { 
+      showPasswordModal(); 
+    }
+  });
 
-document.getElementById('searchInput')?.addEventListener('input', (e) => { 
-  searchQuery = e.target.value; 
-  renderContacts(); 
-});
-
-// Initialize app
-function init() {
-  loadContactsFromStorage();
-  renderContacts();
-  updateCompactStatusBadge();
-  updateUIBasedOnMode();
-  initCategoryDropdown();
-  initModals();
+  document.getElementById('searchInput')?.addEventListener('input', (e) => { 
+    searchQuery = e.target.value; 
+    renderContacts(); 
+  });
+  
+  document.getElementById('openAddModalBtn')?.addEventListener('click', () => openModalForAdd());
 }
 
-// Call init when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', initApp);
