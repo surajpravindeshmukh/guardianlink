@@ -1,14 +1,27 @@
 // Category Dropdown Management
-function initCategoryDropdown() {
-  // Populate category list
+async function initCategoryDropdown() {
+  // Populate category list from Supabase
   const categoryList = document.getElementById('categoryList');
-  categoryList.innerHTML = categories.map(cat => `
-    <button data-cat="${cat.value}" class="category-option w-full text-left px-4 py-3 text-sm hover:bg-indigo-50 transition-all duration-200 flex items-center gap-2">
-      <i class="${cat.icon} ${cat.iconColor} text-xs"></i>
-      <span>${cat.label}</span>
+  
+  // Add "All Categories" option
+  const allCategoriesHtml = `
+    <button data-cat="all" class="category-option w-full text-left px-4 py-3 text-sm hover:bg-indigo-50 transition-all duration-200 flex items-center gap-2">
+      <i class="fas fa-list-ul text-gray-400 text-xs"></i>
+      <span>📋 All Categories</span>
+      <i class="fas fa-check ml-auto text-indigo-600 opacity-0 category-check"></i>
+    </button>
+  `;
+  
+  // Add category options
+  const categoriesHtml = categories.map(cat => `
+    <button data-cat="${cat.name}" class="category-option w-full text-left px-4 py-3 text-sm hover:bg-indigo-50 transition-all duration-200 flex items-center gap-2">
+      <i class="${cat.icon} ${cat.icon_color} text-xs"></i>
+      <span>${cat.name}</span>
       <i class="fas fa-check ml-auto text-indigo-600 opacity-0 category-check"></i>
     </button>
   `).join('');
+  
+  categoryList.innerHTML = allCategoriesHtml + categoriesHtml;
   
   const dropdownBtn = document.getElementById('categoryDropdownBtn');
   const dropdown = document.getElementById('categoryDropdown');
@@ -57,3 +70,10 @@ function initCategoryDropdown() {
     }
   });
 }
+
+// Override the init function to include category dropdown
+const originalInit = initApp;
+window.initApp = async function() {
+  await originalInit();
+  await initCategoryDropdown();
+};
